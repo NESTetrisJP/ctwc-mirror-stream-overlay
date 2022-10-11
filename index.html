@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link href="https://fonts.googleapis.com/css?family=Noto+Sans+JP" rel="stylesheet">
+    <style>
+      :root {
+        --theme-color: rgb(255, 219, 118);
+      }
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: "Noto Sans JP";
+        font-weight: 900;
+        letter-spacing: 1px;
+        color: white;
+      }
+      .background {
+        position: absolute;
+        top: 1023px;
+        width: 1920px;
+        height: 57px;
+        background-color: rgb(17, 13, 15);
+        border-top: 3px solid var(--theme-color);
+        box-sizing: border-box;
+      }
+      .page {
+        position: absolute;
+        top: 1026px;
+        width: 1800px;
+        height: 54px;
+        line-height: 54px;
+        font-size: 28px;
+        text-align: center;
+      }
+      .fixed {
+        position: absolute;
+        top: 1026px;
+        width: 1920px;
+        height: 54px;
+        line-height: 54px;
+        font-size: 28px;
+        text-align: right;
+        padding-right: 24px;
+        box-sizing: border-box;
+        color: var(--theme-color);
+      }
+      .theme-color {
+        color: var(--theme-color);
+      }
+      .pad {
+        display: inline-block;
+        width: 50px;
+      }
+      .commentator-accounts {
+        display: inline-table;
+        text-align: left;
+      }
+      .commentator-accounts>:nth-child(1) {
+        display: table-row;
+      }
+      .commentator-accounts>:nth-child(2) {
+        display: table-row;
+        position: relative;
+        top: -54px;
+      }
+      .commentator-accounts>:nth-child(3) {
+        display: table-row;
+        position: relative;
+        top: -108px;
+      }
+      .icon {
+        display: inline-block;
+        width: 32px;
+        height: 32px;
+        margin: 0px 8px;
+        vertical-align: -4px;
+      }
+      .icon-mic {
+        background-image: url(./mic.png);
+        margin: 0px;
+      }
+      .icon-twitter {
+        background-image: url(./twitter.png);
+      }
+      .icon-twitch {
+        background-image: url(./twitch.png);
+      }
+      .icon-website {
+        background-image: url(./website.png);
+      }
+      .icon-reduce-margin {
+        margin-left: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="background"></div>
+    <div class="page" id="page0"><span class="icon icon-website"></span><span class="theme-color">thectwc.com<span class="pad"></span>bit.ly/classictetrisjp</span><span class="pad"></span><span class="icon icon-twitter"></span><span class="theme-color">ClassicTetris<span class="pad"></span>ClassicTetrisJP</span></div>
+    <div class="page" id="page1"><span class="theme-color">Classic Tetris World Championship 2022</span><span id="category-pad"></span><span id="category"></span></div>
+    <div class="page" id="page2"></div>
+    <div class="fixed">日本語配信</div>
+
+    <template id="commentator-template">
+      <span>
+        <span class="icon icon-mic"></span>
+        <span class="commentator-name"></span>
+        <span class="commentator-accounts">
+          <span>
+            <span class="icon icon-twitter"></span>
+            <span class="commentator-twitter"></span>
+          </span>
+          <span>
+            <span class="icon icon-twitch"></span>
+            <span class="commentator-twitch"></span>
+          </span>
+        </span>
+      </span>
+    </template>
+    <template id="commentator-template-condensed">
+      <span>
+        <span class="icon icon-mic"></span>
+        <span class="commentator-accounts">
+          <span>
+            <span class="commentator-name"></span>
+          </span>
+          <span>
+            <span class="icon icon-twitter icon-reduce-margin"></span>
+            <span class="commentator-twitter"></span>
+          </span>
+          <span>
+            <span class="icon icon-twitch icon-reduce-margin"></span>
+            <span class="commentator-twitch"></span>
+          </span>
+        </span>
+      </span>
+    </template>
+
+    <script>
+      let api_url = ""
+      const max_pages = 3;
+      let current_page_index = 0;
+      let commentators_condensed = false;
+      const page_intervals = [10000, 10000, 10000];
+      // const page_intervals = [1500, 1500, 10000]; // debug
+      const fade_in_animation = duration => [[{ opacity: 0 }, { opacity : 1 }], { duration: duration, fill: "forwards" }];
+      const fade_out_animation = duration => [[{ opacity: 1 }, { opacity : 0 }], { duration: duration, fill: "forwards" }];
+      let data = {
+        category: "",
+        streamers: [],
+      };
+
+      function createPadNode() {
+        const pad = document.createElement("span");
+        pad.className = "pad";
+        return pad;
+      }
+
+      function apply_data() {
+        console.log(data);
+
+        if (data.category) {
+          document.querySelector("#category").textContent = data.category;
+          document.querySelector("#category-pad").className = "pad";
+        } else {
+          document.querySelector("#category").textContent = "";
+          document.querySelector("#category-pad").className = "";
+        }
+
+        const p1 = document.querySelector("#page2");
+        p1.innerHTML = "";
+        commentators_condensed = data.streamers.length >= 4;
+        const template_class = commentators_condensed ? "commentator-template-condensed" : "commentator-template";
+        const commentator_template = document.getElementById(template_class);
+        data.streamers.forEach((e, i) => {
+          const node = commentator_template.content.cloneNode(true);
+          node.querySelector(".commentator-name").innerText = e.name;
+          node.querySelector(".commentator-twitter").innerText = e.twitter;
+          node.querySelector(".commentator-twitch").innerText = e.twitch;
+          p1.appendChild(node);
+          if (i != data.streamers.length - 1) {
+            p1.appendChild(createPadNode());
+          }
+        });
+      }
+
+      async function fetch_data() {
+        const abortController = new AbortController();
+        window.setTimeout(() => abortController.abort(), 10000);
+        const response = await fetch(api_url, { signal: abortController.signal });
+        const json = await response.json();
+        data = json;
+      }
+
+      function next_page() {
+        const next_page_index = (current_page_index + 1) % max_pages;
+        document.querySelector(`#page${current_page_index}`).animate(...fade_out_animation(1000));
+        document.querySelector(`#page${next_page_index}`).animate(...fade_in_animation(1000));
+        current_page_index = next_page_index;
+        window.setTimeout(() => next_page(), page_intervals[current_page_index]);
+        if (current_page_index == 0) {
+          window.setTimeout(() => apply_data(), 1000);
+        }
+        if (current_page_index == 2) {
+          if (commentators_condensed) {
+            document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(2)`).forEach(e => e.animate(...fade_out_animation(0)));
+            document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(3)`).forEach(e => e.animate(...fade_out_animation(0)));
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(1)`).forEach(e => e.animate(...fade_out_animation(1000))), 3333);
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(2)`).forEach(e => e.animate(...fade_in_animation(1000))), 3333);
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(2)`).forEach(e => e.animate(...fade_out_animation(1000))), 6666);
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(3)`).forEach(e => e.animate(...fade_in_animation(1000))), 6666);
+          } else {
+            document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(2)`).forEach(e => e.animate(...fade_out_animation(0)));
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(1)`).forEach(e => e.animate(...fade_out_animation(1000))), 5000);
+            window.setTimeout(() => document.querySelectorAll(`#page${next_page_index} .commentator-accounts>:nth-child(2)`).forEach(e => e.animate(...fade_in_animation(1000))), 5000);
+          }
+        }
+      }
+
+      async function init() {
+        window.location.search.substring(1).split("&").forEach(e => {
+          if (e.startsWith("api=")) {
+            api_url = window.decodeURIComponent(e.substring(4));
+          }
+        });
+
+        for (let i = 0; i < max_pages; i++) {
+          document.querySelector(`#page${i}`).style.opacity = i == 0 ? 1 : 0;
+        }
+        window.setTimeout(() => next_page(), page_intervals[current_page_index]);
+        window.setInterval(() => fetch_data(), 15000);
+        await fetch_data();
+        apply_data();
+      }
+
+      init();      
+    </script>
+  </body>
+</html>
